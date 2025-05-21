@@ -40,12 +40,11 @@ async def handle_message(message: types.Message):
     thread_id = get_or_create_thread(user_id)
 
     # System message с натальной картой — перед каждым запросом
-    astro_message = f"Натальная карта пользователя: {DEFAULT_ASTRO}"
     client.beta.threads.messages.create(
-        thread_id=thread_id,
-        role="system",
-        content=astro_message
-    )
+    thread_id=thread_id,
+    role="user",
+    content=f"Натальная карта пользователя: {DEFAULT_ASTRO}. {message.text}"
+)
     # Сообщение пользователя
     client.beta.threads.messages.create(
         thread_id=thread_id,
