@@ -46,12 +46,7 @@ async def handle_message(message: types.Message):
     role="user",
     content=f"Натальная карта пользователя: {DEFAULT_ASTRO}. {message.text}"
 )
-    # Сообщение пользователя
-    client.beta.threads.messages.create(
-        thread_id=thread_id,
-        role="user",
-        content=message.text
-    )
+    
     # Запуск ассистента
     run = client.beta.threads.runs.create(
         thread_id=thread_id,
