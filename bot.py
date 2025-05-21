@@ -39,44 +39,42 @@ def get_or_create_thread(user_id):
 async def handle_message(message: types.Message):
     print(f"Получено сообщение: {message.text} от user_id {message.from_user.id}")
     try:
-    user_id = message.from_user.id
-    thread_id = get_or_create_thread(user_id)
-    print(f"Thread id для пользователя: {thread_id}")
+        user_id = message.from_user.id
+        thread_id = get_or_create_thread(user_id)
+        print(f"Thread id для пользователя: {thread_id}")
 
-    # System message с натальной картой — перед каждым запросом
-    client.beta.threads.messages.create(
-    thread_id=thread_id,
-    role="user",
-    content=f"Натальная карта пользователя: {DEFAULT_ASTRO}. {message.text}"
-)
-   
-    # Запуск ассистента
-    run = client.beta.threads.runs.create(
-        thread_id=thread_id,
-        assistant_id=ASSISTANT_ID
-    )
+        # Здесь попытка обратиться к OpenAI
+        client.beta.threads.messages.create(
+            thread_id=thread_id,
+            role="user",
+            content=f"Натальная карта пользователя: {DEFAULT_ASTRO}. {message.text}"
+        )
 
-    # Ждем завершения run (polling)
-    import time
-    while True:
-        run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
-        if run.status == "completed":
-            break
-        time.sleep(1)
+        run = client.beta.threads.runs.create(
+            thread_id=thread_id,
+            assistant_id=ASSISTANT_ID
+        )
 
-    # Получаем все сообщения, выбираем последний от ассистента
-    messages = client.beta.threads.messages.list(thread_id=thread_id)
-    bot_reply = ""
-    for m in messages.data[::-1]:
-        if m.role == "assistant":
-            bot_reply = m.content[0].text.value
-            break
-    await message.answer(bot_reply)
-    print(f"Ответ отправлен: {bot_reply}")
-    
+        import time
+        while True:
+            run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
+            if run.status == "completed":
+                break
+            time.sleep(1)
+
+        messages = client.beta.threads.messages.list(thread_id=thread_id)
+        bot_reply = ""
+        for m in messages.data[::-1]:
+            if m.role == "assistant":
+                bot_reply = m.content[0].text.value
+                break
+        await message.answer(bot_reply)
+        print(f"Ответ отправлен: {bot_reply}")
+
     except Exception as e:
         print(f"Ошибка в обработке сообщения: {e}")
         await message.answer("Извините, произошла ошибка. Попробуйте позже.")
+
 
 if __name__ == "__main__":
     executor.start_polling(dp)
