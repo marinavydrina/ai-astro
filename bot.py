@@ -63,12 +63,14 @@ async def handle_message(message: types.Message):
             time.sleep(1)
 
         messages = client.beta.threads.messages.list(thread_id=thread_id)
+        # Найти самое последнее сообщение от ассистента (или проще — брать messages.data[-1])
         bot_reply = ""
-        for m in messages.data[::-1]:
+        for m in messages.data[::-1]:  # идём с конца!
             if m.role == "assistant":
-                bot_reply = m.content[0].text.value
-                break
+              bot_reply = m.content[0].text.value
+            break
         await message.answer(bot_reply)
+
         print(f"Ответ отправлен: {bot_reply}")
 
     except Exception as e:
