@@ -37,8 +37,11 @@ def get_or_create_thread(user_id):
 
 @dp.message_handler()
 async def handle_message(message: types.Message):
+    print(f"Получено сообщение: {message.text} от user_id {message.from_user.id}")
+    try:
     user_id = message.from_user.id
     thread_id = get_or_create_thread(user_id)
+    print(f"Thread id для пользователя: {thread_id}")
 
     # System message с натальной картой — перед каждым запросом
     client.beta.threads.messages.create(
@@ -69,6 +72,11 @@ async def handle_message(message: types.Message):
             bot_reply = m.content[0].text.value
             break
     await message.answer(bot_reply)
+    print(f"Ответ отправлен: {bot_reply}")
+    
+    except Exception as e:
+        print(f"Ошибка в обработке сообщения: {e}")
+        await message.answer("Извините, произошла ошибка. Попробуйте позже.")
 
 if __name__ == "__main__":
     executor.start_polling(dp)
