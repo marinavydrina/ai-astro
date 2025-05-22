@@ -76,8 +76,18 @@ async def handle_message(message: types.Message):
                 break
             time.sleep(1)
 
-        # Получаем последнее сообщение ассистента
+        # Даем ассистенту доп. время, чтобы точно сохранить ответ
+        time.sleep(2)
+
+        # Получаем все сообщения в треде и печатаем их
         messages = client.beta.threads.messages.list(thread_id=thread_id)
+        print("=== СООБЩЕНИЯ В ТРЕДЕ ===")
+        for idx, m in enumerate(messages.data):
+            role = m.role
+            text = m.content[0].text.value if m.content else "[no content]"
+            print(f"{idx}: role={role} | text={text}")
+
+        # Находим САМОЕ ПОСЛЕДНЕЕ сообщение ассистента
         bot_reply = ""
         for m in messages.data[::-1]:  # идём с конца!
             if m.role == "assistant":
