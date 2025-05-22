@@ -1,18 +1,25 @@
 print("=== BOT STARTED ===")
+
 import os
 import sqlite3
+import traceback
 from aiogram import Bot, Dispatcher, types, executor
 from openai import OpenAI
 
+# Получение переменных окружения
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 ASSISTANT_ID = os.getenv('ASSISTANT_ID')
+
+print(f"TELEGRAM_TOKEN: {TELEGRAM_TOKEN}")
+print(f"OPENAI_API_KEY: {OPENAI_API_KEY}")
+print(f"ASSISTANT_ID: {ASSISTANT_ID}")
 
 bot = Bot(token=TELEGRAM_TOKEN)
 dp = Dispatcher(bot)
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Simple SQLite to store user_id <-> thread_id
+# SQLite для хранения user_id <-> thread_id
 conn = sqlite3.connect('db.sqlite')
 cursor = conn.cursor()
 cursor.execute("CREATE TABLE IF NOT EXISTS threads (user_id INTEGER PRIMARY KEY, thread_id TEXT)")
@@ -43,13 +50,20 @@ async def handle_message(message: types.Message):
         thread_id = get_or_create_thread(user_id)
         print(f"Thread id для пользователя: {thread_id}")
 
-        # Здесь попытка обратиться к OpenAI
+        content = (
+            f"Натальная карта пользователя: {DEFAULT_ASTRO}\n"
+            f"Вопрос пользователя: {message.text}\n"
+            f"Ответь строго на этот вопрос, используя натальную карту. Не повторяй предыдущие ответы, каждый раз используй новый анализ."
+        )
+
+        # Создаём сообщение в треде
         client.beta.threads.messages.create(
             thread_id=thread_id,
             role="user",
-            content=f"Натальная карта пользователя: {DEFAULT_ASTRO}. {message.text}"
+            content=content
         )
 
+        # Запускаем ассистента
         run = client.beta.threads.runs.create(
             thread_id=thread_id,
             assistant_id=ASSISTANT_ID
@@ -62,21 +76,22 @@ async def handle_message(message: types.Message):
                 break
             time.sleep(1)
 
+        # Получаем последнее сообщение ассистента
         messages = client.beta.threads.messages.list(thread_id=thread_id)
-        # Найти самое последнее сообщение от ассистента (или проще — брать messages.data[-1])
         bot_reply = ""
         for m in messages.data[::-1]:  # идём с конца!
             if m.role == "assistant":
-              bot_reply = m.content[0].text.value
-            break
+                bot_reply = m.content[0].text.value
+                break
+
+        print(f"Ответ ассистента: {bot_reply}")
         await message.answer(bot_reply)
 
-        print(f"Ответ отправлен: {bot_reply}")
-
     except Exception as e:
+        print("=== ОШИБКА В ХЕНДЛЕРЕ ===")
         print(f"Ошибка в обработке сообщения: {e}")
+        print(traceback.format_exc())
         await message.answer("Извините, произошла ошибка. Попробуйте позже.")
-
 
 if __name__ == "__main__":
     executor.start_polling(dp)
