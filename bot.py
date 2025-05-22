@@ -56,12 +56,13 @@ async def handle_message(message: types.Message):
             f"Ответь строго на этот вопрос, используя натальную карту. Не повторяй предыдущие ответы, каждый раз используй новый анализ."
         )
 
-        # Создаём сообщение в треде
-        client.beta.threads.messages.create(
+        # Создаём сообщение в треде и сохраняем id этого сообщения
+        user_msg = client.beta.threads.messages.create(
             thread_id=thread_id,
             role="user",
             content=content
         )
+        user_msg_id = user_msg.id
 
         # Запускаем ассистента
         run = client.beta.threads.runs.create(
@@ -84,15 +85,28 @@ async def handle_message(message: types.Message):
         print("=== СООБЩЕНИЯ В ТРЕДЕ ===")
         for idx, m in enumerate(messages.data):
             role = m.role
+            mid = m.id
             text = m.content[0].text.value if m.content else "[no content]"
-            print(f"{idx}: role={role} | text={text}")
+            print(f"{idx}: role={role} | id={mid} | text={text}")
 
-        # Находим САМОЕ ПОСЛЕДНЕЕ сообщение ассистента
+        # Поиск ответа ассистента, который идёт сразу после user_msg
         bot_reply = ""
-        for m in messages.data[::-1]:  # идём с конца!
-            if m.role == "assistant":
-                bot_reply = m.content[0].text.value
-                break
+        found = False
+        for i, m in enumerate(messages.data):
+            if m.id == user_msg_id:
+                # Ответ ассистента должен быть ближе к началу (меньше индекс)
+                if i > 0:
+                    next_msg = messages.data[i-1]
+                    if next_msg.role == "assistant":
+                        bot_reply = next_msg.content[0].text.value
+                        found = True
+                        break
+        if not found:
+            # fallback — просто последний ассистентский (на всякий случай)
+            for m in messages.data:
+                if m.role == "assistant":
+                    bot_reply = m.content[0].text.value
+                    break
 
         print(f"Ответ ассистента: {bot_reply}")
         await message.answer(bot_reply)
